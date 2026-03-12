@@ -1,6 +1,6 @@
 services:
   php:
-    build: .
+    image: urcb/wp-sqlite:latest
     container_name: wp_php
     volumes:
       - wp_root:/var/www/html
