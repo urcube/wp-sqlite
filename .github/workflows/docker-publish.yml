@@ -1,0 +1,50 @@
+name: Build and Push to Docker Hub
+
+on:
+  push:
+    branches: [ "main" ]
+  schedule:
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Fetch WordPress version
+        id: wp_version
+        run: |
+          # Fetch the latest stable WordPress version from the official API
+          VERSION=$(curl -s https://api.wordpress.org/core/version-check/1.7/ | grep -oP '"version":"\K[^"]+' | head -n 1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Detected WordPress Version: $VERSION"
+
+      - name: Test Docker Build (Dry Run)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          build-args: |
+            WP_VERSION=${{ steps.wp_version.outputs.version }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          build-args: |
+            WP_VERSION=${{ steps.wp_version.outputs.version }}
+          tags: |
+            urcb/wp-sqlite:latest
+            urcb/wp-sqlite:${{ steps.wp_version.outputs.version }}
