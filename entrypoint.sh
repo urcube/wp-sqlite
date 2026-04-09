@@ -1,23 +1,27 @@
 #!/bin/sh
 set -e
 
-# 1. Sync the core files (non-destructive)
-echo "Syncing WordPress core..."
-cp -rn /usr/src/wordpress/. /var/www/html/
+# 1. Initialize the Named Volume
+# This only runs if the volume is empty (e.g., a new dev setup or server migration)
+if [ ! -e /var/www/html/index.php ]; then
+    echo "Initializing WordPress core in volume..."
+    cp -rn /usr/src/wordpress/. /var/www/html/
+fi
 
-# 2. FORCE the SQLite integration files
-# This ensures that even if the host volume is old, the DB driver is current
-echo "Updating SQLite integration..."
+# 2. Sync SQLite Driver
+# We keep this outside the 'if' to ensure that if you update your 
+# Docker image, the SQLite logic in the volume updates too.
+echo "Syncing SQLite driver..."
 mkdir -p /var/www/html/wp-content/mu-plugins/
 cp -rf /usr/src/wordpress/wp-content/mu-plugins/sqlite-database-integration /var/www/html/wp-content/mu-plugins/
 cp -f /usr/src/wordpress/wp-content/db.php /var/www/html/wp-content/db.php
 
-# 3. Ensure the database directory exists and is writeable
+# 3. Handle the Database Bind Mount
+# This is the ONLY folder that needs strict write permissions for Search to work
+echo "Setting up database permissions..."
 mkdir -p /var/www/html/wp-content/database
+chown -R 82:82 /var/www/html/wp-content/database
 
-# 4. Permissions
-echo "Setting permissions..."
-chown -R 82:82 /var/www/html
-
-echo "Starting PHP-FPM..."
+# 4. Cleanup/Start
+echo "WordPress is ready. Starting PHP-FPM..."
 exec "$@"

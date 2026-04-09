@@ -2,15 +2,14 @@
 FROM alpine:latest AS fetcher
 ARG WP_VERSION=latest
 
-RUN apk add --no-cache curl tar
+RUN apk add --no-cache curl tar unzip
 RUN if [ "$WP_VERSION" = "latest" ]; then \
       curl -fL https://wordpress.org/latest.tar.gz | tar -xz -C /tmp; \
     else \
       curl -fL https://wordpress.org/wordpress-${WP_VERSION}.tar.gz | tar -xz -C /tmp; \
     fi
-RUN curl -fL https://github.com/WordPress/sqlite-database-integration/archive/refs/heads/trunk.tar.gz | \
-    tar -xz -C /tmp && \
-    mv /tmp/sqlite-database-integration-trunk /tmp/sqlite-database-integration
+RUN curl -fL https://downloads.wordpress.org/plugin/sqlite-database-integration.zip -o /tmp/plugin.zip && \
+    unzip /tmp/plugin.zip -d /tmp/
 
 # STAGE 2: Builder
 FROM php:8.4-fpm-alpine AS builder
